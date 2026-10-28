@@ -1,0 +1,4 @@
+EXPORTS
+GetFileVersionInfoSizeExW=LabSize
+GetFileVersionInfoExW=LabInfo
+VerQueryValueW=LabQuery

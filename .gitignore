@@ -1,0 +1,6 @@
+run/
+*.dll
+*.obj
+*.exp
+*.lib
+*.exe
