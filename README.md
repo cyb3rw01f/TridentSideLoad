@@ -4,7 +4,26 @@ One lab action. Stage three files, then start the signed host.
 
 The host is a copy of Microsoft-signed `where.exe`, outside `System32`. It imports `version.dll`. That DLL is not a KnownDLL, so the loader takes the unsigned copy sitting in the same folder. `where.dat` is already there. `cmd.exe` wrote it before the process started.
 
-Checked on Windows 10 Pro 26H2, build 26300.9711. On that image `where.exe` statically imports `GetFileVersionInfoSizeExW`, `GetFileVersionInfoExW`, and `VerQueryValueW` from `VERSION.dll`. Another build can drop that import. Before a quiet run on a different image:
+Checked on Windows 11 Pro 26H2, build 26300.9711. `Win32_OperatingSystem` is the caption to trust. `ProductName` in the registry still says `Windows 10 Pro` on that image.
+
+`where.exe` there is file version `10.0.26100.1`, the same binary shipped for Windows 11 24H2 and 25H2. SHA256 `F51FAB8041E5023D7290B540A2106F051EF0BD2BC3443C9DAF318628B560FA29`. It statically imports `GetFileVersionInfoSizeExW`, `GetFileVersionInfoExW`, and `VerQueryValueW` from `VERSION.dll`.
+
+The same three imports are on the x64 `where.exe` from the other current Windows 11 lines:
+
+| Windows 11 | `where.exe` | Imports from `VERSION.dll` |
+|---|---|---|
+| 21H2 (`10.0.22000.2600`) | x64 | those three |
+| 22H2 and 23H2 (`10.0.22621.1`) | x64 | those three |
+| 24H2 and 25H2 (`10.0.26100.1`) | x64 | those three |
+| 26H2 build 26300.9711 | same file as 24H2/25H2 | those three |
+
+`run.bat` copies `System32\where.exe` from the machine you run it on. A 22H2 lab and a 25H2 lab each get a host that matches that image. The canary DLL is x64 and forwards those three names to that machine's `System32\version.dll`.
+
+ARM64 Windows 11 is a different `where.exe`. This DLL will not load into it. `SysWOW64\where.exe` will not load it either.
+
+Smart App Control or a WDAC policy in enforcement can block the unsigned `version.dll` before the host runs it. The canary line never shows, and the DLL may still be in the folder. That is the control. Defender quarantine is the other common reason for a missing line.
+
+On an image that is not in the table, check the import table before you call an empty run a miss:
 
 ```text
 dumpbin /imports %SystemRoot%\System32\where.exe
