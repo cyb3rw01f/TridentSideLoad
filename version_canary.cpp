@@ -1,7 +1,7 @@
 // Lab canary. where.exe imports version.dll, and that DLL is not a KnownDLL,
 // so a copy of where.exe loads this file from its own directory.
-// The three exports exist so the process can finish starting. They call the
-// real System32 copy. The only lab action is writing the marker file.
+// The three exports call the real System32 copy so the process can finish
+// starting. DllMain does not write a file. The marker is staged first.
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -22,49 +22,33 @@ static HMODULE real_version(void) {
     return mod;
 }
 
-static void write_marker(HMODULE self) {
-    wchar_t dir[MAX_PATH];
-    DWORD n = GetModuleFileNameW(self, dir, MAX_PATH);
-    if (n == 0 || n >= MAX_PATH) {
-        return;
-    }
-    wchar_t *slash = wcsrchr(dir, L'\\');
-    if (!slash) {
-        return;
-    }
-    *(slash + 1) = L'\0';
-
+static void say_loaded(void) {
     wchar_t canary[160];
     DWORD got = GetEnvironmentVariableW(L"LAB_TRIDENT_CANARY", canary, 160);
     if (got == 0 || got >= 160) {
         wcscpy_s(canary, 160, L"LAB-TRIDENT-SIDELOAD");
     }
-
-    wchar_t file[MAX_PATH];
-    if (swprintf_s(file, MAX_PATH, L"%s%s.txt", dir, canary) < 0) {
+    wchar_t line[240];
+    if (swprintf_s(line, 240, L"%s version.dll loaded from the EXE directory\r\n", canary) < 0) {
         return;
     }
-
-    HANDLE h = CreateFileW(file, GENERIC_WRITE, FILE_SHARE_READ, NULL,
-                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (h == INVALID_HANDLE_VALUE) {
+    HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (out == NULL || out == INVALID_HANDLE_VALUE) {
         return;
     }
-    char utf8[200];
-    int len = WideCharToMultiByte(CP_UTF8, 0, canary, -1, utf8, sizeof(utf8), NULL, NULL);
+    char utf8[320];
+    int len = WideCharToMultiByte(CP_UTF8, 0, line, -1, utf8, sizeof(utf8), NULL, NULL);
     if (len > 1) {
         DWORD wrote = 0;
-        WriteFile(h, utf8, (DWORD)(len - 1), &wrote, NULL);
-        WriteFile(h, "\r\n", 2, &wrote, NULL);
+        WriteFile(out, utf8, (DWORD)(len - 1), &wrote, NULL);
     }
-    CloseHandle(h);
 }
 
 BOOL WINAPI DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     (void)reserved;
     if (reason == DLL_PROCESS_ATTACH) {
         DisableThreadLibraryCalls(module);
-        write_marker(module);
+        say_loaded();
     }
     return TRUE;
 }
