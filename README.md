@@ -27,6 +27,8 @@ run\LAB-TRIDENT-SIDELOAD-<utc>\
 
 `where.exe` with no arguments prints its usage and exits 2. Before that, the console should show one line from the DLL: `<canary> version.dll loaded from the EXE directory`. If that line is missing, the copy loaded `System32\version.dll` and this run did not do the side-load.
 
+After the process exits, a dialog titled `LAB-TRIDENT-SIDELOAD` stays up until you click OK. It lists the canary, the folder, `where.exe`, `version.dll`, and `where.dat`.
+
 The real `where.exe` in `System32` is not modified.
 
 ## What you should see

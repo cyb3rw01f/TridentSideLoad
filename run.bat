@@ -52,8 +52,10 @@ echo Host signature and DLL signature:
 where pwsh >nul 2>&1
 if errorlevel 1 (
     powershell -NoProfile -File "%~dp0print-sig.ps1" -HostPath "%RUN%\where.exe" -DllPath "%RUN%\version.dll"
+    powershell -NoProfile -File "%~dp0show-result.ps1" -Canary "%CANARY%" -RunDir "%RUN%" -ExitCode "!EXITCODE!"
 ) else (
     pwsh -NoProfile -File "%~dp0print-sig.ps1" -HostPath "%RUN%\where.exe" -DllPath "%RUN%\version.dll"
+    pwsh -NoProfile -File "%~dp0show-result.ps1" -Canary "%CANARY%" -RunDir "%RUN%" -ExitCode "!EXITCODE!"
 )
 echo.
 exit /b 0
