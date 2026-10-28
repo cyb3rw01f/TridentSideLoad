@@ -4,6 +4,14 @@ One lab action. Stage three files, then start the signed host.
 
 The host is a copy of Microsoft-signed `where.exe`, outside `System32`. It imports `version.dll`. That DLL is not a KnownDLL, so the loader takes the unsigned copy sitting in the same folder. `where.dat` is already there. `cmd.exe` wrote it before the process started.
 
+Checked on Windows 10 Pro 26H2, build 26300.9711. On that image `where.exe` statically imports `GetFileVersionInfoSizeExW`, `GetFileVersionInfoExW`, and `VerQueryValueW` from `VERSION.dll`. Another build can drop that import. Before a quiet run on a different image:
+
+```text
+dumpbin /imports %SystemRoot%\System32\where.exe
+```
+
+Those three names have to be under `VERSION.dll`. If they are gone, this host will not side-load.
+
 That is the log shape from the side-load step. Signed image, wrong directory. Unsigned DLL from that directory. A third file in the same folder, created by the stager, not by the host.
 
 Search the canary. It is the directory name, and the first line of `where.dat`. File contents are usually not in the Sysmon event. The path is.
@@ -14,7 +22,7 @@ Search the canary. It is the directory name, and the first line of `where.dat`. 
 run.bat
 ```
 
-Needs the VS 2026 x64 compiler. `build.bat` calls `vcvars64` if `cl` is not already on PATH. Python is not used.
+Needs the VS 2026 x64 compiler. `build.bat` calls `vcvars64` if `cl` is not already on PATH. The DLL is x64 and matches `System32\where.exe`. `SysWOW64\where.exe` will not load it. Python is not used.
 
 The run folder looks like this:
 
@@ -25,7 +33,7 @@ run\LAB-TRIDENT-SIDELOAD-<utc>\
     where.dat     plaintext marker, written by cmd.exe
 ```
 
-`where.exe` with no arguments prints its usage and exits 2. Before that, the console should show one line from the DLL: `<canary> version.dll loaded from the EXE directory`. If that line is missing, the copy loaded `System32\version.dll` and this run did not do the side-load.
+`where.exe` with no arguments prints its usage and exits 2. Before that, the console should show one line from the DLL: `<canary> version.dll loaded from the EXE directory`. If that line is missing, look in the canary folder. Defender quarantines an unsigned `version.dll` next to a signed Microsoft binary, and then there is nothing to load. If `version.dll` is still on disk and the line is missing, the copy loaded `System32\version.dll` and this run did not do the side-load.
 
 After the process exits, a dialog titled `LAB-TRIDENT-SIDELOAD` stays up until you click OK. It lists the canary, the folder, `where.exe`, `version.dll`, and `where.dat`.
 
@@ -40,7 +48,7 @@ Event ID 7 has to be on. If image loads are dropped, you get the process and the
 | Event | What | Who |
 |---|---|---|
 | 11 File create | `where.exe`, `version.dll`, `where.dat` under the canary directory | `cmd.exe` |
-| 1 Process create | Image ends with `\<canary>\where.exe`. Signature Valid, Microsoft Windows. Path is not `System32`. | `where.exe` |
+| 1 Process create | Image ends with `\<canary>\where.exe`. Signature Valid, Microsoft Windows. Path is not `System32`. `OriginalFileName` stays `where.exe` if the copy is renamed. This run keeps the name. | `where.exe` |
 | 7 Image load | ImageLoaded ends with `\<canary>\version.dll`. Same directory as the EXE. Not signed. | `where.exe` |
 
 `where.exe` also loads normal DLLs from `System32`. Leave those. The unsigned `version.dll` under the canary directory is the one.
